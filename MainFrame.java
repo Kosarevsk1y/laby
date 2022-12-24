@@ -1,246 +1,303 @@
-import java.awt.BorderLayout;
-import java.awt.Image;
-import java.awt.Toolkit;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
-import java.lang.Math;
-import javax.swing.Box;
-import javax.swing.ButtonGroup;
-import javax.swing.ImageIcon;
-import javax.swing.JButton;
-import javax.swing.JFrame;
-import javax.swing.JLabel;
-import javax.swing.JOptionPane;
-import javax.swing.JRadioButton;
-import javax.swing.JTextField;
+package com.company;
+import javax.swing.*;
+import javax.swing.event.MenuEvent;
+import javax.swing.event.MenuListener;
+import javax.swing.table.TableColumn;
+import javax.swing.table.TableRowSorter;
+import java.awt.*;
+import java.awt.event.*;
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.PrintStream;
 
 public class MainFrame extends JFrame {
-    private static final int WIDTH = 740;
-    private static final int HEIGHT = 480;
-    private JTextField textFieldX;
-    private JTextField textFieldY;
-    private JTextField textFieldZ;
-    private JTextField textFieldResult;
-    private JTextField textFieldM[] = new JTextField[3];
-    private JLabel labelImage;
-    private ButtonGroup radioButtonsF = new ButtonGroup();
-    private ButtonGroup radioButtonsM = new ButtonGroup();
-    private Box hboxFormulaType = Box.createHorizontalBox();
-    private Box hboxMemRB = Box.createHorizontalBox();
-    private int formulaId = 1;
-    private Double mem[] = new Double[3];
-    private int memid;
-    private Toolkit kit;
+    private static final int WIDTH = 700;
+    private static final int HEIGHT = 500;
 
-    public Double calculate1(Double x, Double y, Double z) {
-        return (Math.sin(Math.PI * y * y) + Math.log(y * y)) / (Math.sin(Math.PI * z * z) + Math.sin(x) + Math.log(z * z) + x * x + Math.pow(Math.E, Math.cos(z * x)));
-    }
+    private JFileChooser fileChooser = null;
+    private JMenuItem saveToTextMenuItem;
+    private JMenuItem searchValueMenuItem;
+    private JMenuItem infoMenuItem;
+    private JCheckBoxMenuItem showColumnMenuItem;
+    private JCheckBoxMenuItem filterMenuItem;
 
-    public Double calculate2(Double x, Double y, Double z) {
-        return (x * x) / (Math.log(Math.pow(z, y)) + Math.pow(Math.cos(Math.pow(x, 1 / 3)), 2));
-    }
+    private JTextField textFieldFrom;
+    private JTextField textFieldTo;
+    private JTextField textFieldStep;
+    private JTextField textFieldParameter;
+    private Box hBoxResult;
 
-    private void addRadioButtonF(String buttonName, final int formulaId) {
-        JRadioButton button = new JRadioButton(buttonName);
-        button.addActionListener(new ActionListener() {
-            public void actionPerformed(ActionEvent ev) {
-                MainFrame.this.formulaId = formulaId;
-                Image im;
+    private TableCellVisualizer renderer = new TableCellVisualizer();
+    private BoolTableCellVisualizer rendererBoolean = new BoolTableCellVisualizer();
+    private GornerTable data;
 
-                if (formulaId == 1)
-                    im = kit.getImage("pictures/func1.png").getScaledInstance(600, 100, Image.SCALE_SMOOTH);
-                else
-                    im = kit.getImage("pictures/func2.png").getScaledInstance(600, 100, Image.SCALE_SMOOTH);
+    private JTable table;
+    private TableColumn bool_column;
 
-
-                ImageIcon i = new ImageIcon();
-                i.setImage(im);
-                labelImage.setIcon(i);
-            }
-        });
-        radioButtonsF.add(button);
-        hboxFormulaType.add(button);
-    }
-
-    private void addRadioButtonM(String buttonName, final int mid) {
-        JRadioButton button = new JRadioButton(buttonName);
-        button.addActionListener(new ActionListener() {
-            public void actionPerformed(ActionEvent ev) {
-                MainFrame.this.memid = mid - 1;
-            }
-        });
-        radioButtonsM.add(button);
-        hboxMemRB.add(button);
-    }
-
-    public MainFrame() {
-        super("aboba");
-        mem[0] = (double) 0;
-        mem[1] = (double) 0;
-        mem[2] = (double) 0;
+    public MainFrame(){
+        super("Табулирование функции на отрезке");
         setSize(WIDTH, HEIGHT);
-        kit = Toolkit.getDefaultToolkit();
-        setLocation((kit.getScreenSize().width - WIDTH) / 2, (kit.getScreenSize().height - HEIGHT) / 2);
-        hboxFormulaType.add(Box.createHorizontalGlue());
-        addRadioButtonF("Formula 1", 1);
-        addRadioButtonF("Formula 2", 2);
-        radioButtonsF.setSelected(radioButtonsF.getElements().nextElement().getModel(), true);
-        hboxFormulaType.add(Box.createHorizontalGlue());
+        Toolkit kit = Toolkit.getDefaultToolkit();
+        setLocation((kit.getScreenSize().width - WIDTH)/2, (kit.getScreenSize().height - HEIGHT)/2);
 
-        hboxMemRB.add(Box.createHorizontalGlue());
-        addRadioButtonM("M1", 1);
-        addRadioButtonM("M2", 2);
-        addRadioButtonM("M3", 3);
-        radioButtonsM.setSelected(radioButtonsM.getElements().nextElement().getModel(), true);
-        hboxMemRB.add(Box.createHorizontalGlue());
+        JMenuBar menuBar = new JMenuBar();
+        setJMenuBar(menuBar);
 
-        JLabel labelForX = new JLabel("X:");
-        textFieldX = new JTextField("0", 10);
-        textFieldX.setMaximumSize(textFieldX.getPreferredSize());
-        JLabel labelForY = new JLabel("Y:");
-        textFieldY = new JTextField("0", 10);
-        textFieldY.setMaximumSize(textFieldY.getPreferredSize());
-        JLabel labelForZ = new JLabel("Z:");
-        textFieldZ = new JTextField("0", 10);
-        textFieldZ.setMaximumSize(textFieldZ.getPreferredSize());
+        JMenu fileMenu = new JMenu("Файл");
+        menuBar.add(fileMenu);
+        JMenu tableMenu = new JMenu("Таблица");
+        menuBar.add(tableMenu);
+        JMenu infoMenu = new JMenu("Справка");
+        menuBar.add(infoMenu);
 
-        JLabel labelForM1 = new JLabel("M1:");
-        textFieldM[0] = new JTextField("0", 12);
-        textFieldM[0].setMaximumSize(textFieldM[0].getPreferredSize());
-        JLabel labelForM2 = new JLabel("M2:");
-        textFieldM[1] = new JTextField("0", 12);
-        textFieldM[1].setMaximumSize(textFieldM[1].getPreferredSize());
-        JLabel labelForM3 = new JLabel("M3:");
-        textFieldM[2] = new JTextField("0", 12);
-        textFieldM[2].setMaximumSize(textFieldM[2].getPreferredSize());
+        Action saveToTextAction = new AbstractAction( "Сохранить в текстовый файл") {
+            public void actionPerformed(ActionEvent event) {
+                if (fileChooser == null) {
+                    fileChooser = new JFileChooser();
+                    fileChooser.setCurrentDirectory(new File("."));
+                }
+                if (fileChooser.showSaveDialog(MainFrame.this) == JFileChooser.APPROVE_OPTION){
+                    saveToTextFile(fileChooser.getSelectedFile());
+                }
+            }
+        };
+        saveToTextMenuItem = fileMenu.add(saveToTextAction);
 
-        Box hboxMem = Box.createHorizontalBox();
-        hboxMem.add(Box.createHorizontalGlue());
-        hboxMem.add(labelForM1);
-        hboxMem.add(Box.createHorizontalStrut(10));
-        hboxMem.add(textFieldM[0]);
-        hboxMem.add(Box.createHorizontalStrut(70));
-        hboxMem.add(labelForM2);
-        hboxMem.add(Box.createHorizontalStrut(10));
-        hboxMem.add(textFieldM[1]);
-        hboxMem.add(Box.createHorizontalStrut(70));
-        hboxMem.add(labelForM3);
-        hboxMem.add(Box.createHorizontalStrut(10));
-        hboxMem.add(textFieldM[2]);
-        hboxMem.add(Box.createHorizontalStrut(30));
+        fileMenu.addMenuListener(new MenuListener() {
+            @Override
+            public void menuSelected(MenuEvent e) {
+                if(data == null) saveToTextMenuItem.setEnabled(false);
+                else saveToTextMenuItem.setEnabled(true);
+            }
 
-        Box hboxVariables = Box.createHorizontalBox();
-        hboxVariables.add(Box.createHorizontalGlue());
-        hboxVariables.add(labelForX);
-        hboxVariables.add(Box.createHorizontalStrut(10));
-        hboxVariables.add(textFieldX);
-        hboxVariables.add(Box.createHorizontalStrut(80));
-        hboxVariables.add(labelForY);
-        hboxVariables.add(Box.createHorizontalStrut(10));
-        hboxVariables.add(textFieldY);
-        hboxVariables.add(Box.createHorizontalStrut(80));
-        hboxVariables.add(labelForZ);
-        hboxVariables.add(Box.createHorizontalStrut(10));
-        hboxVariables.add(textFieldZ);
-        hboxVariables.add(Box.createHorizontalStrut(60));
+            @Override
+            public void menuDeselected(MenuEvent e) { }
 
-        Box hboxImage = Box.createHorizontalBox();
-        labelImage = new JLabel("");
-        hboxImage.add(labelImage);
+            @Override
+            public void menuCanceled(MenuEvent e) { }
+        });
 
+        Action searchValueAction = new AbstractAction("Найти значение функции") {
+            public void actionPerformed(ActionEvent event) {
+                // Запросить пользователя ввести искомую строку
+                String value = JOptionPane.showInputDialog(MainFrame.this, "Введите значение для поиска",
+                        "Поиск значения", JOptionPane.QUESTION_MESSAGE);
+                // Установить введенное значение в качестве иголки
+                renderer.setNeedle(value);
+                // Обновить таблицу
+                getContentPane().repaint();
+            }
+        };
+        // Добавить действие в меню "Таблица"
+        searchValueMenuItem = tableMenu.add(searchValueAction);
+        tableMenu.add(new JSeparator());
+        showColumnMenuItem = new JCheckBoxMenuItem("Показать третий столбец", true);
+        tableMenu.add(showColumnMenuItem);
 
-        JLabel labelForResult = new JLabel("Result:");
-        textFieldResult = new JTextField("0", 12);
-        textFieldResult.setMaximumSize(textFieldResult.getPreferredSize());
-        Box hboxResult = Box.createHorizontalBox();
-        hboxResult.add(Box.createHorizontalGlue());
-        hboxResult.add(labelForResult);
-        hboxResult.add(Box.createHorizontalStrut(10));
-        hboxResult.add(textFieldResult);
-        hboxResult.add(Box.createHorizontalGlue());
+        showColumnMenuItem.addItemListener(new ItemListener() {
+            @Override
+            public void itemStateChanged(ItemEvent e) {
 
-        JButton buttonCalc = new JButton("Calculate");
-        buttonCalc.addActionListener(new ActionListener() {
-            public void actionPerformed(ActionEvent ev) {
-                try {
-                    Double x = Double.parseDouble(textFieldX.getText());
-                    Double y = Double.parseDouble(textFieldY.getText());
-                    Double z = Double.parseDouble(textFieldZ.getText());
-                    Double result;
-                    if (formulaId == 1)
-                        result = calculate1(x, y, z);
-                    else
-                        result = calculate2(x, y, z);
-                    textFieldResult.setText(result.toString());
-                } catch (NumberFormatException ex) {
-                    JOptionPane.showMessageDialog(MainFrame.this,
-                            "NumberFormatException", "Error 450",
-                            JOptionPane.WARNING_MESSAGE);
+                if(e.getStateChange() == 2) {
+                    bool_column = table.getColumnModel().getColumn(2);
+                    table.removeColumn(bool_column);
+                }if(e.getStateChange() == 1){
+                    table.addColumn(bool_column);
                 }
             }
         });
-        JButton buttonReset = new JButton("Clear");
-        buttonReset.addActionListener(new ActionListener() {
-            public void actionPerformed(ActionEvent ev) {
-                textFieldX.setText("0");
-                textFieldY.setText("0");
-                textFieldZ.setText("0");
-                textFieldResult.setText("0");
+
+        filterMenuItem = new JCheckBoxMenuItem("Фильтр", false);
+        tableMenu.add(filterMenuItem);
+
+        RowFilter<GornerTable, Integer> tableFilter = new RowFilter<GornerTable, Integer>() {
+            @Override
+            public boolean include(Entry<? extends GornerTable, ? extends Integer> entry) {
+                Double value0 = (Double)entry.getValue(0);
+                Double value1 = (Double)entry.getValue(1);
+                Boolean temp0 = value0>=-2 && value0<=2;
+                Boolean temp1 = value1>=-2 && value1<=2;
+                return temp0||temp1;
+            }
+        };
+
+
+        filterMenuItem.addItemListener(new ItemListener() {
+            @Override
+            public void itemStateChanged(ItemEvent e) {
+
+                if(e.getStateChange() == 1){
+                    TableRowSorter<GornerTable> sorter = new TableRowSorter<GornerTable>(data);
+                    sorter.setRowFilter(tableFilter);
+                    table.setRowSorter(sorter);
+                }
+                if(e.getStateChange() == 2) {
+                    TableRowSorter<GornerTable> sorter = new TableRowSorter<GornerTable>(data);
+                    table.setRowSorter(sorter);
+                }
             }
         });
 
-        JButton MC = new JButton("MC");
-        MC.addActionListener(new ActionListener() {
+        tableMenu.addMenuListener(new MenuListener() {
+            @Override
+            public void menuSelected(MenuEvent e) {
+                if(data == null){
+                    showColumnMenuItem.setEnabled(false);
+                    searchValueMenuItem.setEnabled(false);
+                    filterMenuItem.setEnabled(false);
+                }else{
+                    showColumnMenuItem.setEnabled(true);
+                    searchValueMenuItem.setEnabled(true);
+                    filterMenuItem.setEnabled(true);
+                }
+            }
+
+            @Override
+            public void menuDeselected(MenuEvent e) { }
+
+            @Override
+            public void menuCanceled(MenuEvent e) { }
+        });
+
+        Action aboutProgrammAction = new AbstractAction("О программе") {
+            public void actionPerformed(ActionEvent event) {
+                //Box infoBox = Box.createVerticalBox();
+                JLabel info = new JLabel("Кузьмич Евгений 6 группа");
+                info.setIcon(null);
+                info.setHorizontalTextPosition(JLabel.CENTER);
+                info.setVerticalTextPosition(JLabel.BOTTOM);
+                info.setIconTextGap(10);
+                JOptionPane.showMessageDialog(MainFrame.this, info,
+                        "О программе", JOptionPane.PLAIN_MESSAGE);
+            }
+        };
+        infoMenuItem = infoMenu.add(aboutProgrammAction);
+
+        textFieldFrom = new JTextField("0.0", 10);
+        textFieldFrom.setMaximumSize(textFieldFrom.getPreferredSize());
+
+        textFieldTo = new JTextField("1.0", 10);
+        textFieldTo.setMaximumSize(textFieldTo.getPreferredSize());
+
+        textFieldStep = new JTextField("0.1", 10);
+        textFieldStep.setMaximumSize(textFieldStep.getPreferredSize());
+
+        textFieldParameter = new JTextField("0.1", 10);
+        textFieldParameter.setMaximumSize(textFieldStep.getPreferredSize());
+
+        Box hboxXRange = Box.createHorizontalBox();
+        hboxXRange.setBorder(BorderFactory.createTitledBorder( BorderFactory.createEtchedBorder(), "Настройки:"));
+        hboxXRange.add(Box.createHorizontalGlue());
+        hboxXRange.add(new JLabel("X начальное:"));
+        hboxXRange.add(Box.createHorizontalStrut(10));
+        hboxXRange.add(textFieldFrom);
+        hboxXRange.add(Box.createHorizontalStrut(20));
+        hboxXRange.add(new JLabel("X конечное:"));
+        hboxXRange.add(Box.createHorizontalStrut(10));
+        hboxXRange.add(textFieldTo);
+        hboxXRange.add(Box.createHorizontalStrut(20));
+        hboxXRange.add(new JLabel("Шаг для X:"));
+        hboxXRange.add(Box.createHorizontalStrut(10));
+        hboxXRange.add(textFieldStep);
+        hboxXRange.add(Box.createHorizontalStrut(20));
+        hboxXRange.add(new JLabel("Слагаемое для Y:"));
+        hboxXRange.add(Box.createHorizontalStrut(10));
+        hboxXRange.add(textFieldParameter);
+        hboxXRange.add(Box.createHorizontalGlue());
+
+        // Установить предпочтительный размер области больше
+        // минимального, чтобы при  компоновке область совсем не сдавили
+        hboxXRange.setPreferredSize(new Dimension((int)(hboxXRange.getMaximumSize().getWidth()),
+                (int)(hboxXRange.getMinimumSize().getHeight()*1.5)));
+
+        getContentPane().add(hboxXRange, BorderLayout.NORTH);
+
+        JButton buttonCalc = new JButton("Вычислить");
+        buttonCalc.addActionListener(new ActionListener() {
             public void actionPerformed(ActionEvent ev) {
-                mem[memid] = (double) 0;
-                textFieldM[memid].setText(mem[memid].toString());
+                try {
+                    showColumnMenuItem.setState(true);
+                    filterMenuItem.setState(false);
+                    filterMenuItem.setAccelerator(
+                            KeyStroke.getKeyStroke(KeyEvent.getExtendedKeyCodeForChar('C'), InputEvent.ALT_DOWN_MASK));
+                    Double from = Double.parseDouble(textFieldFrom.getText());
+                    Double to = Double.parseDouble(textFieldTo.getText());
+                    Double step = Double.parseDouble(textFieldStep.getText());
+                    Double parameter = Double.parseDouble(textFieldParameter.getText());
+                    data = new GornerTable(from, to, step, parameter);
+                    // Создать новый экземпляр таблицы
+
+                    table = new JTable(data);
+                    table.setDefaultRenderer(Double.class, renderer);
+                    table.setDefaultRenderer(Boolean.class, rendererBoolean);
+                    table.setRowHeight(30);
+
+                    hBoxResult.removeAll();
+                    // Добавить в hBoxResult таблицу, "обернутую" в панель
+                    // с полосами прокрутки
+                    hBoxResult.add(new JScrollPane(table));
+                    // Перерасположить компоненты в hBoxResult и выполнить
+                    // перерисовку
+                    hBoxResult.revalidate();
+
+                } catch (NumberFormatException ex) {
+                    JOptionPane.showMessageDialog(MainFrame.this,
+                            "Ошибка в формате записи числа с плавающей точкой",
+                            "Ошибочный формат числа", JOptionPane.WARNING_MESSAGE);
+                }
             }
         });
-        JButton MP = new JButton("M+");
-        MP.addActionListener(new ActionListener() {
+
+        JButton buttonReset = new JButton("Очистить поля");
+        buttonReset.addActionListener(new ActionListener() {
             public void actionPerformed(ActionEvent ev) {
-                mem[memid] += Double.parseDouble(textFieldResult.getText());
-                textFieldM[memid].setText(mem[memid].toString());
+                textFieldFrom.setText("0.0");
+                textFieldTo.setText("1.0");
+                textFieldStep.setText("0.1");
+                hBoxResult.removeAll();
+                // Перерисовать сам hBoxResult
+                hBoxResult.repaint();
+                data = null;
             }
         });
 
         Box hboxButtons = Box.createHorizontalBox();
+        hboxButtons.setBorder(BorderFactory.createEtchedBorder());
         hboxButtons.add(Box.createHorizontalGlue());
         hboxButtons.add(buttonCalc);
         hboxButtons.add(Box.createHorizontalStrut(30));
         hboxButtons.add(buttonReset);
         hboxButtons.add(Box.createHorizontalGlue());
-        Box hboxButtonsM = Box.createHorizontalBox();
-        hboxButtonsM.add(Box.createHorizontalGlue());
-        hboxButtonsM.add(MP);
-        hboxButtonsM.add(Box.createHorizontalStrut(30));
-        hboxButtonsM.add(MC);
-        hboxButtonsM.add(Box.createHorizontalGlue());
-        Box contentBox = Box.createVerticalBox();
-        contentBox.add(Box.createVerticalGlue());
-        contentBox.add(hboxImage);
 
-        contentBox.add(hboxFormulaType);
-        contentBox.add(hboxVariables);
-        contentBox.add(hboxResult);
-        contentBox.add(hboxButtons);
-        contentBox.add(hboxButtonsM);
-        contentBox.add(hboxMemRB);
-        contentBox.add(hboxMem);
-        contentBox.add(Box.createVerticalGlue());
-        getContentPane().add(contentBox, BorderLayout.CENTER);
+        hboxButtons.setPreferredSize(new Dimension(
+                (int)(hboxButtons.getMaximumSize().getWidth()),
+                (int)(hboxButtons.getMinimumSize().getHeight()*1.5)));
 
-        Image im = kit.getImage("pictures/func1.png").getScaledInstance(600, 100, Image.SCALE_SMOOTH);;
-        ImageIcon icon = new ImageIcon();
-        icon.setImage(im);
-        labelImage.setIcon(icon);
-
-
+        getContentPane().add(hboxButtons, BorderLayout.SOUTH);
+        hBoxResult = Box.createHorizontalBox();
+        getContentPane().add(hBoxResult);
     }
 
-    public static void main(String[] args) {
-        MainFrame frame = new MainFrame();
-        frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        frame.setVisible(true);
+    protected void saveToTextFile(File selectedFile){
+        try{
+            // Создать новый символьный поток вывода, направленный в  указанный файл
+            PrintStream out = new PrintStream(selectedFile);
+            out.println("Результаты табулирования функции:");
+            out.println("");
+            out.println("Интервал от " + data.getFrom() + " до " + data.getTo()+
+                    " с шагом " + data.getStep()+ "и параметром" + data.getParameter());
+            out.println("====================================================");
+            for (int i = 0; i<data.getRowCount(); i++)
+            {
+                out.println("Значение в точке " + data.getValueAt(i,0)  + " равно " +
+                        data.getValueAt(i,1));
+            }
+            out.close();
+        } catch (FileNotFoundException e){
+            // Исключительную ситуацию "ФайлНеНайден" можно не
+            // обрабатывать, так как мы файл создаем, а не открываем
+        }
     }
+
+
 }
